@@ -3300,6 +3300,130 @@ fn settings_view(app: &mut App, ui: &mut egui::Ui, p: Palette, s: &Strings) {
             }
         });
     });
+
+    settings_group(ui, s.sec_updates(), p, |ui| updates_view(app, ui, p, s));
+}
+
+fn updates_view(app: &mut App, ui: &mut egui::Ui, p: Palette, s: &Strings) {
+    use crate::update::{CURRENT_VERSION, RELEASES, Updater};
+
+    app.updater.poll();
+    let busy = matches!(
+        app.updater,
+        Updater::Checking(_) | Updater::Downloading(_, _)
+    );
+    let ready = matches!(app.updater, Updater::Ready(_));
+    let can_install = !ready || app.can_install_update();
+    let (status, error, notes) = match &app.updater {
+        Updater::Idle => (None, None, None),
+        Updater::Checking(_) => (Some(s.update_checking().into()), None, None),
+        Updater::NoRelease => (Some(s.update_no_release().into()), None, None),
+        Updater::Current => (Some(s.update_current().into()), None, None),
+        Updater::CheckFailed(failure) => (None, Some(*failure), None),
+        Updater::Available(release, failure) => (
+            Some(s.update_available(release.tag())),
+            *failure,
+            Some(release.notes_url()),
+        ),
+        Updater::Downloading(release, _) => (
+            Some(s.update_downloading(release.tag())),
+            None,
+            Some(release.notes_url()),
+        ),
+        Updater::Ready(staged) => (
+            Some(s.update_ready(staged.release().tag())),
+            None,
+            Some(staged.release().notes_url()),
+        ),
+    };
+
+    let download = matches!(app.updater, Updater::Available(_, _));
+    let action = if ready {
+        s.update_install()
+    } else if download {
+        s.update_download()
+    } else {
+        s.update_check()
+    };
+    let installed = s.update_installed(CURRENT_VERSION);
+    let mut activate = false;
+    let mut cancel = false;
+    let controls = |ui: &mut egui::Ui| {
+        activate = compact_btn(
+            ui,
+            None,
+            Some(action),
+            action,
+            !busy && can_install,
+            BtnKind::SolidAccent,
+            p,
+        )
+        .clicked();
+        if ready {
+            let label = s.cancel();
+            cancel = compact_btn(ui, None, Some(label), label, true, BtnKind::Subtle, p).clicked();
+        } else if download {
+            let label = s.update_check();
+            if compact_btn(ui, None, Some(label), label, true, BtnKind::Subtle, p).clicked() {
+                app.updater.check(ui.ctx());
+            }
+        }
+    };
+    let installed = RichText::new(installed).size(BODY_SIZE).color(p.text);
+    if ui.available_width() < 460.0 {
+        ui.label(installed);
+        ui.horizontal_wrapped(controls);
+    } else {
+        ui.horizontal(|ui| {
+            ui.label(installed);
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), controls);
+        });
+    }
+    if let Some(status) = status {
+        ui.horizontal_wrapped(|ui| {
+            if busy {
+                ui.add(egui::Spinner::new().size(11.0).color(p.accent_bright));
+            }
+            ui.label(RichText::new(status).size(CAPTION_SIZE).color(p.muted));
+        });
+    }
+    if let Some(error) = error {
+        ui.label(
+            RichText::new(s.update_failure(error))
+                .size(CAPTION_SIZE)
+                .color(p.err),
+        );
+    }
+    if !can_install {
+        ui.label(
+            RichText::new(s.update_blocked())
+                .size(CAPTION_SIZE)
+                .color(p.muted),
+        );
+        if !app.capture_exports.is_empty() {
+            ui.ctx()
+                .request_repaint_after(std::time::Duration::from_millis(150));
+        }
+    }
+    if let Some(url) = notes {
+        ui.hyperlink_to(RichText::new(s.update_notes()).size(CAPTION_SIZE), url);
+    } else if error.is_some() {
+        ui.hyperlink_to(
+            RichText::new(s.update_releases()).size(CAPTION_SIZE),
+            RELEASES,
+        );
+    }
+    if cancel {
+        app.updater.cancel_ready();
+    } else if activate {
+        if ready {
+            app.install_requested = true;
+        } else if download {
+            app.updater.download(ui.ctx());
+        } else {
+            app.updater.check(ui.ctx());
+        }
+    }
 }
 
 fn settings_group(ui: &mut egui::Ui, heading: &str, p: Palette, body: impl FnOnce(&mut egui::Ui)) {

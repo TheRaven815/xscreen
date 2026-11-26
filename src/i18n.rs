@@ -419,6 +419,110 @@ impl Strings {
     pub fn sec_storage(&self) -> &'static str {
         self.pick("Storage & Clipboard", "Depolama ve Pano")
     }
+    pub fn sec_updates(&self) -> &'static str {
+        self.pick("Updates", "Güncellemeler")
+    }
+    pub fn update_installed(&self, version: &str) -> String {
+        format!("{} v{version}", self.pick("Installed:", "Yüklü sürüm:"))
+    }
+    pub fn update_check(&self) -> &'static str {
+        self.pick("Check for updates", "Güncellemeleri denetle")
+    }
+    pub fn update_checking(&self) -> &'static str {
+        self.pick("Checking GitHub…", "GitHub denetleniyor…")
+    }
+    pub fn update_current(&self) -> &'static str {
+        self.pick("xscreen is up to date.", "xscreen güncel.")
+    }
+    pub fn update_no_release(&self) -> &'static str {
+        self.pick(
+            "No stable release on GitHub yet.",
+            "GitHub’da henüz kararlı sürüm yok.",
+        )
+    }
+    pub fn update_available(&self, tag: &str) -> String {
+        match self.lang {
+            Lang::En => format!("{tag} is available."),
+            Lang::Tr => format!("{tag} sürümü hazır."),
+        }
+    }
+    pub fn update_notes(&self) -> &'static str {
+        self.pick("Release notes", "Sürüm notları")
+    }
+    pub fn update_releases(&self) -> &'static str {
+        self.pick("Open GitHub Releases", "GitHub sürümlerini aç")
+    }
+    pub fn update_download(&self) -> &'static str {
+        self.pick("Download update", "Güncellemeyi indir")
+    }
+    pub fn update_downloading(&self, tag: &str) -> String {
+        match self.lang {
+            Lang::En => format!("Downloading and verifying {tag}…"),
+            Lang::Tr => format!("{tag} indiriliyor ve doğrulanıyor…"),
+        }
+    }
+    pub fn update_ready(&self, tag: &str) -> String {
+        match self.lang {
+            Lang::En => format!("{tag} verified. Install to restart xscreen."),
+            Lang::Tr => format!("{tag} doğrulandı. Kurulum xscreen’i yeniden başlatır."),
+        }
+    }
+    pub fn update_install(&self) -> &'static str {
+        self.pick("Install and restart", "Kur ve yeniden başlat")
+    }
+    pub fn update_blocked(&self) -> &'static str {
+        self.pick(
+            "Save or discard Editor changes and finish any active capture or edit before installing.",
+            "Kurulumdan önce Editör değişikliklerini kaydet veya at; açık yakalama ya da düzenlemeyi bitir.",
+        )
+    }
+    pub fn update_failure(&self, failure: crate::update::Failure) -> &'static str {
+        use crate::update::Failure;
+        match failure {
+            Failure::Network => self.pick(
+                "Could not reach GitHub. Check your connection and try again.",
+                "GitHub’a ulaşılamadı. Bağlantını kontrol edip tekrar dene.",
+            ),
+            Failure::RateLimited => self.pick(
+                "GitHub refused the request. Try again later.",
+                "GitHub isteği reddetti. Daha sonra tekrar dene.",
+            ),
+            Failure::Release => self.pick(
+                "No usable Windows x64 package found. Check GitHub Releases.",
+                "Kullanılabilir Windows x64 paketi bulunamadı. GitHub sürümlerini kontrol et.",
+            ),
+            Failure::Integrity => self.pick(
+                "Verification failed. No files were replaced. Try downloading again.",
+                "Doğrulama başarısız. Uygulama dosyası değiştirilmedi. Tekrar indirmeyi dene.",
+            ),
+            Failure::Storage => self.pick(
+                "Could not stage the update. Check free space and write access to the xscreen folder.",
+                "Güncelleme hazırlanamadı. Boş alanı ve xscreen klasörünün yazma iznini kontrol et.",
+            ),
+            Failure::Worker => self.pick(
+                "The update task stopped. Try again.",
+                "Güncelleme işlemi durdu. Tekrar dene.",
+            ),
+        }
+    }
+    pub fn update_install_failed(&self, asset: &str) -> String {
+        match self.lang {
+            Lang::En => format!(
+                "Could not finish the update. You can download {asset} from GitHub Releases and replace the old file after closing xscreen."
+            ),
+            Lang::Tr => format!(
+                "Güncelleme tamamlanamadı. GitHub sürümlerinden {asset} dosyasını indirip xscreen kapalıyken eski dosyanın yerine koyabilirsin."
+            ),
+        }
+    }
+    pub fn update_backup_path(&self, path: &str) -> String {
+        match self.lang {
+            Lang::En => format!(
+                "\n\nThe previous EXE could not be restored automatically. A backup is at:\n{path}"
+            ),
+            Lang::Tr => format!("\n\nEski EXE otomatik geri yüklenemedi. Yedek dosya:\n{path}"),
+        }
+    }
     pub fn lbl_language(&self) -> &'static str {
         self.pick("Interface language", "Arayüz dili")
     }

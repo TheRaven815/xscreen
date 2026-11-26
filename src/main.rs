@@ -12,8 +12,12 @@ mod i18n;
 mod native;
 mod startup;
 mod studio;
+mod update;
 
 fn main() {
+    if let Some(success) = update::helper_mode() {
+        std::process::exit(i32::from(!success));
+    }
     // Pencere veya GDI çağrısından önce; winit'in varsayılanına bağlı kalma.
     unsafe {
         use windows::Win32::UI::HiDpi::*;
@@ -47,6 +51,7 @@ fn main() {
             .with_writer(std::sync::Mutex::new(log))
             .try_init();
     }
+    let (updates, pending_install) = std::sync::mpsc::channel();
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
             .with_title("xscreen")
@@ -65,10 +70,17 @@ fn main() {
     if let Err(error) = eframe::run_native(
         "xscreen",
         options,
-        Box::new(|cc| Ok(Box::new(app::App::new(cc)?))),
+        Box::new(move |cc| {
+            let app = app::App::new(cc, updates)?;
+            update::cleanup_after_start();
+            Ok(Box::new(app))
+        }),
     ) {
         tracing::error!(%error, "app failed to start");
         eprintln!("xscreen: {error}");
+    }
+    if let Ok((staged, lang)) = pending_install.try_recv() {
+        update::install_after_exit(staged, lang);
     }
 }
 

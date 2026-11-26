@@ -1,41 +1,77 @@
-# xscreen
+<p align="center">
+  <img src="assets/xscreen.png" alt="xscreen icon" width="88" height="88" />
+</p>
 
-Native screen capture and ShareX-inspired image annotation studio for Windows 10/11, written in Rust.
+<h1 align="center">xscreen</h1>
 
-## Run
+<p align="center"><strong>Capture, annotate, and save without leaving your workflow.</strong></p>
+<p align="center">Portable screenshot studio for Windows 10 and 11 · x64 · No installer</p>
 
-Needs the Rust MSVC toolchain and Visual Studio C++ Build Tools.
+<p align="center">
+  <a href="https://github.com/TheRaven815/xscreen/releases/latest">Download latest release</a>
+  · <a href="#quick-start">Quick start</a>
+  · <a href="#shortcuts">Shortcuts</a>
+  · <a href="#build-from-source">Build from source</a>
+</p>
+
+## Download
+
+Open [Releases](https://github.com/TheRaven815/xscreen/releases), download **`xscreen-windows-x64.exe`** under **Assets**, and run it. xscreen starts in the Windows notification area. Right-click its icon to open **Album**, **Editor**, or **Settings**. Closing the Studio window leaves xscreen running; choose **Exit** in the tray menu to quit.
+
+To verify the download, run `Get-FileHash .\xscreen-windows-x64.exe -Algorithm SHA256` in PowerShell and compare the result with `SHA256SUMS.txt` from the same release.
+
+### Update xscreen
+
+In **Settings → Updates**, select **Check for updates**. If a newer stable release is available, you can read its release notes and download it. xscreen verifies the download against the release’s SHA-256 checksum. Select **Install and restart** to replace your portable EXE in place. Finish any active capture and save or discard Editor changes first. Your settings and screenshots stay where they are.
+
+If the EXE is in a folder you cannot write to, download the new EXE from **Releases**, exit xscreen from the tray, and replace it manually.
+
+## Quick start
+
+1. Press `Print Screen` to freeze your displays, then drag to select a region. Hold `Alt` to snap to the window under the pointer.
+2. Add annotations directly in the overlay, or press `Ctrl+E` to continue in **Editor** with your drawings still editable.
+3. Copy your selection with `Enter` in the overlay or `Ctrl+C` in Editor. Use `Ctrl+S` to save a PNG. Open saved screenshots again from **Album**.
+
+## What you can do
+
+- **Capture across monitors.** Resize your selection with edge and corner handles. Use the optional pixel magnifier and color readout for precise crops.
+- **Edit annotations after drawing.** Select, move, resize, recolor, duplicate, or remove arrows, shapes, pen strokes, highlights, text, numbered markers, and blur or mosaic regions. Undo and redo changes as you work.
+- **Work with existing images.** Open a saved image from Album or paste one from the clipboard. Zoom, pan, crop, overwrite the PNG, or save a separate copy. Editor asks before discarding unsaved work on `Esc`.
+- **Make it yours.** Choose a global shortcut, save folder, cursor visibility, and Windows startup behavior. Use light or dark mode in English or Türkçe.
+
+## Shortcuts
+
+| Shortcut | Where | Action |
+| --- | --- | --- |
+| `Print Screen` | Anywhere | Start capture with the default shortcut |
+| `Alt` (hold) | Capture | Snap to window bounds |
+| `Enter` | Capture | Copy selected region |
+| `Ctrl+E` | Capture | Open selection in Editor |
+| `Ctrl+V` | Editor | Paste image from clipboard |
+| `V` / `C` | Editor | Select tool / Crop tool |
+| `Ctrl+C` | Editor | Copy edited image |
+| `Ctrl+S` | Capture / Editor | Save PNG |
+| `Ctrl+Shift+S` | Editor | Save separate PNG copy |
+| `Ctrl+Z` / `Ctrl+Y` | Capture / Editor | Undo / Redo |
+| `Esc` | Editor | Exit active edit mode or return to Album; prompts if changes are unsaved |
+
+If Windows or another app already uses `Print Screen`, choose a different shortcut in **Settings**.
+
+## Privacy and storage
+
+xscreen does not upload screenshots or send telemetry. Update checks and downloads contact GitHub only when you request them. Captures save to your configured folder (`Pictures\xscreen` by default). Settings and diagnostic logs stay under `%APPDATA%\xscreen`. Copying an image puts it on the Windows clipboard.
+
+## Build from source
+
+Use Windows with the stable Rust MSVC toolchain, Visual Studio C++ Build Tools, and a Windows SDK.
 
 ```powershell
 cargo run --locked
-```
-
-- **Tray-first startup**: launches silently into the Windows system tray; closing the main studio window keeps `xscreen` active in the tray.
-- **Compact Studio (`Album · Editor · Settings`)**: single `38px` top command bar with instant switching between **Album**, **Editor**, and **Settings**, plus quick **EN / TR** language toggle, **Dark / Light** theme toggle, and **Capture** trigger.
-- **ShareX-style In-App Image Editor**:
-  - Click any saved screenshot in **Album** (or press `Ctrl+E` during live capture, or `Ctrl+V` to paste from clipboard) to open it in the full in-app Editor.
-  - **Object-based annotations (`Select` / `V`)**: click (or right-click from any tool) any drawn arrow, line, rectangle, ellipse, triangle, freehand stroke, highlighter, text, step number, or blur/mosaic region to move it, drag its endpoint/corner handles to resize, change its color, stroke width, outline/fill mode, or blur style live from the contextual property bar, double-click text to re-edit in place, duplicate (`Ctrl+D`), bring to front, or delete (`Delete`).
-  - **Crop & Zoom/Pan**: interactive `Crop (C)` with rule-of-thirds guides and 8 resize handles (non-destructively shifts existing vector shapes and supports `Ctrl+Z` undo!), wheel zoom (`10%–800%`) around cursor, and middle-drag / `Space+Drag` panning.
-  - **Save & Copy**: `Copy (Ctrl+C)` writes `CF_DIBV5` + `PNG` to clipboard; `Save (Ctrl+S)` atomically updates the opened PNG; `Save copy (Ctrl+Shift+S)` writes a new timestamped PNG in the capture folder.
-  - **Unsaved edits**: `Esc` asks before returning to Album if the image has unsaved changes.
-- **Live Multi-Monitor Capture Overlay**:
-  - `Print Screen` (or configured global shortcut) freezes all attached monitors in parallel (`GDI` fast path for SDR, `DXGI Desktop Duplication` for HDR/wide-gamut).
-  - Drag to select region, `Alt` to snap to window bounds (DWM extended frame), 8 resize handles, 8× pixel magnifier with `#RRGGBB` readout.
-  - Includes `Select` tool + right-click object selection right on the frozen capture overlay, plus `Editor (Ctrl+E)` button to jump straight into the full Studio Editor with live vector shapes intact.
-- **Bilingual & Themed**: **English** and **Türkçe** interface languages and **Dark / Light** themes apply across the Studio window, Capture Overlay, and Win32 system tray menu (`%APPDATA%\xscreen\config.json`).
-
-## Local Data
-
-xscreen does not upload screenshots or send telemetry. Settings and diagnostic logs stay under `%APPDATA%\xscreen`; saved screenshots go to the configured folder (by default, `Pictures\xscreen`). Copying an image places it on the Windows clipboard.
-
-## Build & Check
-
-```powershell
 cargo test --locked
 cargo clippy --locked --all-targets -- -D warnings
 ```
 
-For a portable Windows MSVC build, use a static C runtime. Remap local source paths and strip debug information before sharing the executable:
+To build a portable x64 executable with a static C runtime:
 
 ```powershell
 $env:CARGO_ENCODED_RUSTFLAGS = @(
@@ -44,10 +80,21 @@ $env:CARGO_ENCODED_RUSTFLAGS = @(
     "--remap-path-prefix=$env:USERPROFILE=/build/user",
     "--remap-path-prefix=$($PWD.Path)=/build/xscreen"
 ) -join [char]31
-cargo build --locked --release
+cargo build --locked --release --target x86_64-pc-windows-msvc
 Remove-Item Env:CARGO_ENCODED_RUSTFLAGS
 ```
 
-The binary is `target\release\xscreen.exe`. If your Cargo or Rust installation is outside your user profile, remap those paths too or build on a fresh CI runner. Do not publish `.pdb` debug symbols or the build directory.
+Output: `target\x86_64-pc-windows-msvc\release\xscreen.exe`. Build on a clean CI runner or remap any additional local Cargo and Rust paths before sharing. Do not publish `.pdb` files or the whole build directory.
 
-Optional Windows integration checks are in `tests/`. They use the interactive desktop; `album-smoke.ps1` moves the mouse, updates the clipboard, and writes screenshots under `dist\smoke\album` by default. Review any screenshots before sharing them.
+Optional [Windows smoke tests](tests/) interact with the desktop and clipboard. Review generated screenshots before sharing them.
+
+## Publish a release
+
+Push a stable version tag (`vMAJOR.MINOR.PATCH`) on a commit that contains the [release workflow](.github/workflows/release.yml). Use a new version for each release:
+
+```bash
+git tag -a v0.2.0 -m "xscreen v0.2.0"
+git push origin v0.2.0
+```
+
+GitHub Actions uses the tag as the app and EXE version, tests the tagged code, and publishes a GitHub Release with generated notes, `xscreen-windows-x64.exe`, and `SHA256SUMS.txt`. Ordinary branch pushes do not create releases. Follow progress in the repository’s [Actions tab](https://github.com/TheRaven815/xscreen/actions/workflows/release.yml).

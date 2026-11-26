@@ -155,7 +155,7 @@ Frontmatter tokens map directly to `Palette` in `src/ui.rs` and `CapturePalette`
   - **Row 1 (`34px`)**: `Select (V)`, `Rect (R)`, `Ellipse (E)`, `Triangle`, `Line (L)`, `Arrow (A)`, `Pen (P)`, `Highlighter (H)`, `Text (T)`, `Step Number (N)`, `Blur/Mosaic (B)`, `Crop (C)`, `Undo/Redo`, `Clear`, `Paste (Ctrl+V)`, and right-aligned `Copy`, `Save`, `Save copy`.
   - **Row 2 (`32px`)**: Contextual property bar adapting dynamically to `Crop` mode, the currently **selected annotation object**, or the active drawing tool (color popover + 8 quick swatches, stroke/font slider, `Outline / Fill` toggle, `Soft / Mosaic / Heavy` blur mode selector, and `Duplicate / To front / Delete` object actions).
   - **Canvas**: Smooth wheel zoom (`10%–800%`) around cursor, middle-drag or `Space+Drag` pan, checkerboard alpha backdrop, ShareX-style dashed selection bounding boxes with white circular resize/endpoint handles, double-click in-place text re-editing, and rule-of-thirds interactive `Crop`.
-- **Settings**: Centered `660px` max-width structured preference groups (`General`, `Capture & Shortcut`, `Storage & Clipboard`) with `1px` row dividers and compact `36×20` toggle switches.
+- **Settings**: Centered `660px` max-width structured preference groups (`General`, `Capture & Shortcut`, `Storage & Clipboard`, `Updates`) with `1px` row dividers and compact `36×20` toggle switches. Updates shows the installed version and offers separate check, download, and restart actions, with inline status and errors.
 - **Bottom Status Bar (`24px`)**: Active shortcut & tray status or transient feedback on the left; live cursor `(X, Y)`, image `W × H px`, and `- / 100% / + / Fit` zoom controls on the right when in Editor.
 
 ## Do's and Don'ts

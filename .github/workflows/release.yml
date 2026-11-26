@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Windows x64
+    if: ${{ !github.event.deleted }}
+    runs-on: windows-2025
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Build and test portable EXE
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $version = & ./.github/scripts/set-release-version.ps1 -Tag $env:GITHUB_REF_NAME
+
+          $target = 'x86_64-pc-windows-msvc'
+          $env:CARGO_ENCODED_RUSTFLAGS = @(
+            '-C', 'target-feature=+crt-static',
+            '-C', 'strip=debuginfo',
+            "--remap-path-prefix=$env:USERPROFILE=/build/user",
+            "--remap-path-prefix=$env:GITHUB_WORKSPACE=/build/xscreen"
+          ) -join [char]31
+          rustup run stable cargo test --locked --release --target $target
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          rustup run stable cargo build --locked --release --target $target
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $exe = Get-Item "target/$target/release/xscreen.exe"
+          if ($exe.VersionInfo.ProductVersion -ne $version) {
+            throw "EXE version '$($exe.VersionInfo.ProductVersion)' does not match tag version '$version'."
+          }
+
+          New-Item -ItemType Directory -Path dist/release -Force | Out-Null
+          $asset = 'xscreen-windows-x64.exe'
+          Copy-Item -LiteralPath $exe.FullName -Destination "dist/release/$asset"
+          $hash = (Get-FileHash -LiteralPath "dist/release/$asset" -Algorithm SHA256).Hash.ToLowerInvariant()
+          $checksumFile = Join-Path $PWD.Path 'dist/release/SHA256SUMS.txt'
+          [IO.File]::WriteAllText($checksumFile, "$hash  $asset`n", [Text.Encoding]::ASCII)
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: windows-x64
+          path: dist/release/
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: windows-x64
+          path: dist/release
+
+      - name: Verify and publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        working-directory: dist/release
+        shell: bash
+        run: |
+          sha256sum --check SHA256SUMS.txt
+          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --title "$GITHUB_REF_NAME" \
+            xscreen-windows-x64.exe SHA256SUMS.txt

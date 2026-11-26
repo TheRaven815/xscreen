@@ -383,6 +383,10 @@ pub struct App {
     pub(crate) page: Page,
     pub(crate) album: crate::album::Album,
     pub(crate) studio: ImageStudio,
+    updater: crate::update::Updater,
+    install_requested: bool,
+    installs: Option<mpsc::Sender<(crate::update::Staged, crate::i18n::Lang)>>,
+    capture_exports: Vec<thread::JoinHandle<()>>,
     editor_discard: Option<ui::EditorDiscardAction>,
     capture_after: Option<std::time::Instant>,
     restore_main_after_capture: bool,
@@ -393,7 +397,10 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Result<Self, String> {
+    pub fn new(
+        cc: &eframe::CreationContext<'_>,
+        installs: mpsc::Sender<(crate::update::Staged, crate::i18n::Lang)>,
+    ) -> Result<Self, String> {
         ui::install_fonts(&cc.egui_ctx);
         let (sender, events) = mpsc::channel();
         let native = Native::start(cc.egui_ctx.clone(), sender)?;
@@ -430,6 +437,10 @@ impl App {
             page: Page::Album,
             album: crate::album::Album::default(),
             studio: ImageStudio::default(),
+            updater: crate::update::Updater::default(),
+            install_requested: false,
+            installs: Some(installs),
+            capture_exports: Vec::new(),
             editor_discard: None,
             capture_after: None,
             restore_main_after_capture: false,
@@ -501,7 +512,7 @@ impl App {
         let folder = self.config.save_folder();
         let native = self.native.hwnd_bits();
         self.cancel();
-        thread::spawn(move || {
+        self.capture_exports.push(thread::spawn(move || {
             if let Err(error) = crate::native::copy_to_clipboard(&composed, copy_png) {
                 tracing::error!(%error, "clipboard copy failed");
                 crate::native::Native::post(native, crate::native::NOTICE);
@@ -524,7 +535,24 @@ impl App {
                     crate::native::Native::post(native, crate::native::NOTICE);
                 }
             }
-        });
+        }));
+    }
+
+    fn can_install_update(&self) -> bool {
+        !self.studio.is_modified()
+            && self.studio.editor.draft.is_none()
+            && self.studio.editor.text_at.is_none()
+            && !self.studio.crop_mode
+            && self.studio.shape_drag.is_none()
+            && !self.studio.saving
+            && !self.studio.loading
+            && !self.pending
+            && self.capture_after.is_none()
+            && self.overlay.is_empty()
+            && self
+                .capture_exports
+                .iter()
+                .all(|thread| thread.is_finished())
     }
 
     fn toggle(&mut self, ctx: &egui::Context) {
@@ -685,6 +713,10 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+        if self.installs.is_none() {
+            return; // Restart committed. Ignore queued capture and tray events during shutdown.
+        }
+        self.capture_exports.retain(|thread| !thread.is_finished());
         while let Ok(event) = self.events.try_recv() {
             match event {
                 Event::Toggle => self.toggle(ctx),
@@ -799,6 +831,25 @@ impl eframe::App for App {
         } else {
             self.restore_window_pos = self.main_window_pos;
             self.applied_window_theme = None;
+        }
+        if std::mem::take(&mut self.install_requested)
+            && self.can_install_update()
+            && let Some(staged) = self.updater.take_ready()
+            && let Some(installs) = self.installs.take()
+        {
+            match installs.send((staged, self.config.lang)) {
+                Ok(()) => {
+                    ctx.send_viewport_cmd_to(egui::ViewportId::ROOT, ViewportCommand::Close);
+                    return;
+                }
+                Err(mpsc::SendError((staged, _))) => {
+                    self.installs = Some(installs);
+                    self.updater = crate::update::Updater::Available(
+                        staged.release().clone(),
+                        Some(crate::update::Failure::Worker),
+                    );
+                }
+            }
         }
         let mut close = false;
         let mut copy = false;
@@ -3900,6 +3951,10 @@ mod tests {
             page: Page::Album,
             album: crate::album::Album::default(),
             studio: ImageStudio::default(),
+            updater: crate::update::Updater::default(),
+            install_requested: false,
+            installs: Some(mpsc::channel().0),
+            capture_exports: Vec::new(),
             editor_discard: None,
             capture_after: None,
             restore_main_after_capture: false,
@@ -4006,6 +4061,43 @@ mod tests {
         assert!(app.page == Page::Album);
         assert!(app.editor_discard.is_none());
         assert!(app.studio.has_image());
+    }
+
+    #[test]
+    fn update_install_waits_for_an_idle_and_saved_editor() {
+        let ctx = egui::Context::default();
+        let mut app = stub_app();
+        assert!(app.can_install_update());
+        let _ = ctx.run(studio_raw_input(), |ctx| {
+            app.studio.load_raw_bgra(
+                Some("saved.png".into()),
+                vec![120; 200 * 120 * 4],
+                [200, 120],
+                ctx,
+            );
+        });
+        app.studio.editor.select_tool(Tool::Pen);
+        app.studio.editor.begin((20, 20));
+        assert!(
+            !app.can_install_update(),
+            "an uncommitted draft blocks the restart"
+        );
+        app.studio.editor.cancel_draft();
+        assert!(app.can_install_update());
+        app.studio.editor.place_number((20, 20));
+        assert!(
+            !app.can_install_update(),
+            "unsaved changes block the restart"
+        );
+        app.studio.discard_image();
+        app.studio.saving = true;
+        assert!(!app.can_install_update(), "image saves must finish first");
+        app.studio.saving = false;
+        app.pending = true;
+        assert!(
+            !app.can_install_update(),
+            "active capture blocks the restart"
+        );
     }
 
     #[test]

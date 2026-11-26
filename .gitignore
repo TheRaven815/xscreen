@@ -1,6 +1,7 @@
 /target/
 /.impeccable/
 /dist/
+.xscreen-update-*/
 
 # Local credentials, settings, and diagnostic files
 .env
