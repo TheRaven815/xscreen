@@ -1,0 +1,15 @@
+/target/
+/.impeccable/
+/dist/
+
+# Local credentials, settings, and diagnostic files
+.env
+.env.*
+!*.env.example
+/config.json
+/config.json.bak
+/config.json.part
+*.log
+*.pdb
+*.exe
+/captures/
